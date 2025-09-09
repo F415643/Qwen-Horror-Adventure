@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qwen Horror Adventure - Platformer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            border: 4px solid #3e2723;
+            border-radius: 15px;
+            box-shadow: 0 0 40px rgba(128, 0, 0, 0.8);
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            background: #111;
+        }
+        
+        #uiContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            color: #ff8a80;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            z-index: 10;
+        }
+        
+        #levelDisplay, #collectedLetters {
+            background: rgba(62, 39, 35, 0.9);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 20px;
+            border: 2px solid #4e342e;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+        }
+        
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 56px;
+            font-weight: bold;
+            color: #ff5252;
+            text-shadow: 4px 4px 8px #000;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            text-align: center;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px 40px;
+            border-radius: 15px;
+            border: 3px solid #ff5252;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+        }
+        
+        #controlsInfo {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            color: #e0e0e0;
+            font-size: 16px;
+            text-shadow: 1px 1px 3px #000;
+            background: rgba(62, 39, 35, 0.8);
+            padding: 8px 15px;
+            border-radius: 10px;
+            border: 1px solid #4e342e;
+        }
+        
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(20, 10, 10, 0.98);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+            color: #e0e0e0;
+            text-align: center;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(128, 0, 0, 0.2) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(128, 0, 0, 0.2) 0%, transparent 20%),
+                radial-gradient(circle at 50% 50%, rgba(62, 39, 35, 0.3) 0%, transparent 30%);
+            overflow: hidden;
+        }
+        
+        #startScreen h1 {
+            font-size: 48px;
+            color: #ff8a80;
+            text-shadow: 3px 3px 6px #000;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { text-shadow: 3px 3px 6px #000, 0 0 10px rgba(255, 138, 128, 0.5); }
+            50% { text-shadow: 3px 3px 6px #000, 0 0 20px rgba(255, 138, 128, 0.8); }
+            100% { text-shadow: 3px 3px 6px #000, 0 0 10px rgba(255, 138, 128, 0.5); }
+        }
+        
+        #startScreen p {
+            font-size: 20px;
+            max-width: 85%;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            text-shadow: 1px 1px 2px #000;
+            color: #bdbdbd;
+        }
+        
+        #startButton {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: linear-gradient(to bottom, #4e342e, #3e2723);
+            border: 2px solid #5d4037;
+            border-radius: 30px;
+            color: #ff8a80;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(128, 0, 0, 0.7);
+            transition: all 0.3s;
+            text-shadow: 1px 1px 2px #000;
+        }
+        
+        #startButton:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(255, 138, 128, 0.8);
+            background: linear-gradient(to bottom, #5d4037, #2d1b18);
+        }
+        
+        .treasure-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px #000, 0 0 20px rgba(255, 0, 0, 0.5);
+            animation: glow 2s infinite alternate;
+        }
+        
+        .background-elements {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .background-elements::before,
+        .background-elements::after {
+            content: "";
+            position: absolute;
+            background: rgba(255, 0, 0, 0.1);
+            border-radius: 50%;
+        }
+        
+        .background-elements::before {
+            width: 100px;
+            height: 100px;
+            top: 10%;
+            left: 5%;
+            animation: float 15s infinite linear;
+        }
+        
+        .background-elements::after {
+            width: 70px;
+            height: 70px;
+            bottom: 20%;
+            right: 10%;
+            animation: float 12s infinite linear reverse;
+        }
+        
+        @keyframes float {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+            25% {
+                transform: translate(20px, 20px) rotate(90deg);
+            }
+            50% {
+                transform: translate(0, 40px) rotate(180deg);
+            }
+            75% {
+                transform: translate(-20px, 20px) rotate(270deg);
+            }
+            100% {
+                transform: translate(0, 0) rotate(360deg);
+            }
+        }
+        
+        @keyframes glow {
+            from { text-shadow: 2px 2px 4px #000, 0 0 10px rgba(255, 0, 0, 0.3); }
+            to { text-shadow: 2px 2px 4px #000, 0 0 30px rgba(255, 0, 0, 0.7); }
+        }
+        
+        
+        
+        #fogCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 5;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="startScreen">
+            <div class="treasure-icon">💀</div>
+            <h1>Qwen Horror Adventure</h1>
+            <p>You are a brave explorer trapped in a haunted cavern! Collect the four sacred letters <strong>Q, W, E, N</strong> while avoiding the patrolling monsters. Use your agility and wit to navigate the treacherous platforms and escape with your life!</p>
+            <button id="startButton">Enter the Darkness</button>
+            <!-- Background elements for horror effect -->
+            <div class="background-elements"></div>
+        </div>
+        
+        <canvas id="fogCanvas" width="800" height="600"></canvas>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="uiContainer">
+            <div id="levelDisplay">Level: 1</div>
+            <div id="collectedLetters">Letters: </div>
+        </div>
+        
+        <div id="message">Level Complete!</div>
+        <div id="controlsInfo">Move: A/D or Arrow Keys | Jump: Space/W/Up Arrow</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const fogCanvas = document.getElementById('fogCanvas');
+        const ctx = canvas.getContext('2d');
+        const fogCtx = fogCanvas.getContext('2d');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const collectedLettersDisplay = document.getElementById('collectedLetters');
+        const messageDisplay = document.getElementById('message');
+        const startScreen = document.getElementById('startScreen');
+        const startButton = document.getElementById('startButton');
+
+        const GRAVITY = 0.5;
+        const FRICTION = 0.8;
+        const JUMP_FORCE = -12;
+        const PLAYER_SPEED = 5;
+        const MONSTER_SPEED = 1;
+
+        let level = 1;
+        let gameRunning = false;
+        let gameAudioContext;
+        let footstepsSound;
+        let ambientSound;
+        let monsterSound;
+        let collectSound;
+        let jumpSound;
+
+        // Player object with improved appearance and animation
+        const player = {
+            x: 50,
+            y: 300,
+            width: 25,
+            height: 35,
+            velX: 0,
+            velY: 0,
+            jumping: false,
+            grounded: false,
+            facingRight: true,
+            color: '#2c3e50',
+            // Animation properties
+            walkCycle: 0,
+            walkDirection: 1, // 1 for forward, -1 for backward
+            lastX: 50,
+            isMoving: false
+        };
+
+        // Particle system for fog and effects
+        const particles = [];
+        const fogParticles = [];
+
+        // Level data (platforms, letters, goal, monsters)
+        let currentLevelData = {
+            platforms: [],
+            letters: [],
+            collectedLetters: [],
+            monsters: []
+        };
+
+        // Define levels (10 levels with increasing difficulty and monsters)
+        const levels = [
+            // Level 1 - Basic platforms
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 800, height: 50, color: '#4e342e' },
+                    { x: 200, y: 450, width: 100, height: 20, color: '#4e342e' },
+                    { x: 400, y: 350, width: 100, height: 20, color: '#4e342e' },
+                    { x: 600, y: 250, width: 100, height: 20, color: '#4e342e' }
+                ],
+                letters: [
+                    { x: 690, y: 240, char: 'q', collected: false },
+                    { x: 440, y: 340, char: 'w', collected: false },
+                    { x: 240, y: 440, char: 'e', collected: false },
+                    { x: 40, y: 540, char: 'n', collected: false }
+                ],
+                monsters: [
+                    { x: 300, y: 510, width: 30, height: 30, velX: MONSTER_SPEED, direction: 1, platform: { startX: 200, endX: 400 } }
+                ]
+            },
+            // Level 2 - More platforms
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 800, height: 50, color: '#4e342e' },
+                    { x: 100, y: 450, width: 80, height: 20, color: '#4e342e' },
+                    { x: 300, y: 400, width: 80, height: 20, color: '#4e342e' },
+                    { x: 500, y: 350, width: 80, height: 20, color: '#4e342e' },
+                    { x: 650, y: 300, width: 80, height: 20, color: '#4e342e' },
+                    { x: 500, y: 200, width: 80, height: 20, color: '#4e342e' },
+                    { x: 300, y: 150, width: 80, height: 20, color: '#4e342e' },
+                    { x: 100, y: 200, width: 80, height: 20, color: '#4e342e' }
+                ],
+                letters: [
+                    { x: 110, y: 190, char: 'q', collected: false },
+                    { x: 310, y: 140, char: 'w', collected: false },
+                    { x: 510, y: 190, char: 'e', collected: false },
+                    { x: 660, y: 290, char: 'n', collected: false }
+                ],
+                monsters: [
+                    { x: 200, y: 410, width: 30, height: 30, velX: MONSTER_SPEED, direction: 1, platform: { startX: 100, endX: 380 } },
+                    { x: 600, y: 260, width: 30, height: 30, velX: MONSTER_SPEED, direction: -1, platform: { startX: 500, endX: 780 } }
+                ]
+            },
+            // Level 3 - Gaps and higher jumps
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 200, height: 50, color: '#4e342e' },
+                    { x: 300, y: 550, width: 200, height: 50, color: '#4e342e' },
+                    { x: 600, y: 550, width: 200, height: 50, color: '#4e342e' },
+                    { x: 150, y: 450, width: 80, height: 20, color: '#4e342e' },
+                    { x: 350, y: 350, width: 80, height: 20, color: '#4e342e' },
+                    { x: 550, y: 250, width: 80, height: 20, color: '#4e342e' },
+                    { x: 350, y: 150, width: 80, height: 20, color: '#4e342e' }
+                ],
+                letters: [
+                    { x: 380, y: 140, char: 'q', collected: false },
+                    { x: 580, y: 240, char: 'w', collected: false },
+                    { x: 380, y: 340, char: 'e', collected: false },
+                    { x: 180, y: 440, char: 'n', collected: false }
+                ],
+                monsters: [
+                    { x: 400, y: 510, width: 30, height: 30, velX: MONSTER_SPEED, direction: 1, platform: { startX: 300, endX: 500 } },
+                    { x: 200, y: 410, width: 30, height: 30, velX: MONSTER_SPEED, direction: -1, platform: { startX: 150, endX: 330 } }
+                ]
+            },
+            // Level 4 - Narrow platforms
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 800, height: 50, color: '#4e342e' },
+                    { x: 100, y: 450, width: 50, height: 20, color: '#4e342e' },
+                    { x: 200, y: 400, width: 50, height: 20, color: '#4e342e' },
+                    { x: 300, y: 350, width: 50, height: 20, color: '#4e342e' },
+                    { x: 400, y: 300, width: 50, height: 20, color: '#4e342e' },
+                    { x: 500, y: 250, width: 50, height: 20, color: '#4e342e' },
+                    { x: 600, y: 200, width: 50, height: 20, color: '#4e342e' },
+                    { x: 700, y: 150, width: 50, height: 20, color: '#4e342e' }
+                ],
+                letters: [
+                    { x: 720, y: 140, char: 'q', collected: false },
+                    { x: 620, y: 190, char: 'w', collected: false },
+                    { x: 520, y: 240, char: 'e', collected: false },
+                    { x: 420, y: 290, char: 'n', collected: false }
+                ],
+                monsters: [
+                    { x: 150, y: 410, width: 30, height: 30, velX: MONSTER_SPEED * 1.2, direction: 1, platform: { startX: 100, endX: 250 } },
+                    { x: 350, y: 310, width: 30, height: 30, velX: MONSTER_SPEED * 1.2, direction: -1, platform: { startX: 300, endX: 450 } },
+                    { x: 550, y: 210, width: 30, height: 30, velX: MONSTER_SPEED * 1.2, direction: 1, platform: { startX: 500, endX: 650 } }
+                ]
+            },
+            // Level 5 - Complex layout
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 150, height: 50, color: '#4e342e' },
+                    { x: 250, y: 550, width: 150, height: 50, color: '#4e342e' },
+                    { x: 500, y: 550, width: 150, height: 50, color: '#4e342e' },
+                    { x: 100, y: 450, width: 80, height: 20, color: '#4e342e' },
+                    { x: 300, y: 400, width: 80, height: 20, color: '#4e342e' },
+                    { x: 500, y: 350, width: 80, height: 20, color: '#4e342e' },
+                    { x: 650, y: 300, width: 80, height: 20, color: '#4e342e' },
+                    { x: 500, y: 200, width: 80, height: 20, color: '#4e342e' },
+                    { x: 300, y: 150, width: 80, height: 20, color: '#4e342e' },
+                    { x: 100, y: 200, width: 80, height: 20, color: '#4e342e' },
+                    { x: 650, y: 100, width: 80, height: 20, color: '#4e342e' }
+                ],
+                letters: [
+                    { x: 680, y: 90, char: 'q', collected: false },
+                    { x: 330, y: 140, char: 'w', collected: false },
+                    { x: 530, y: 190, char: 'e', collected: false },
+                    { x: 680, y: 290, char: 'n', collected: false }
+                ],
+                monsters: [
+                    { x: 200, y: 510, width: 30, height: 30, velX: MONSTER_SPEED, direction: 1, platform: { startX: 0, endX: 400 } },
+                    { x: 400, y: 360, width: 30, height: 30, velX: MONSTER_SPEED, direction: -1, platform: { startX: 300, endX: 580 } },
+                    { x: 600, y: 260, width: 30, height: 30, velX: MONSTER_SPEED, direction: 1, platform: { startX: 500, endX: 750 } }
+                ]
+            },
+            // Level 6 - Moving platforms (simulated with tricky jumps)
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 800, height: 50, color: '#4e342e' },
+                    { x: 50, y: 450, width: 100, height: 20, color: '#4e342e' },
+                    { x: 200, y: 400, width: 70, height: 20, color: '#4e342e' },
+                    { x: 320, y: 350, width: 70, height: 20, color: '#4e342e' },
+                    { x: 440, y: 300, width: 70, height: 20, color: '#4e342e' },
+                    { x: 560, y: 250, width: 70, height: 20, color: '#4e342e' },
+                    { x: 680, y: 200, width: 70, height: 20, color: '#4e342e' },
+                    { x: 600, y: 100, width: 100, height: 20, color: '#4e342e' }
+                ],
+                letters: [
+                    { x: 640, y: 90, char: 'q', collected: false },
+                    { x: 710, y: 190, char: 'w', collected: false },
+                    { x: 590, y: 240, char: 'e', collected: false },
+                    { x: 470, y: 290, char: 'n', collected: false }
+                ],
+                monsters: [
+                    { x: 150, y: 410, width: 30, height: 30, velX: MONSTER_SPEED * 1.3, direction: 1, platform: { startX: 50, endX: 300 } },
+                    { x: 370, y: 310, width: 30, height: 30, velX: MONSTER_SPEED * 1.3, direction: -1, platform: { startX: 320, endX: 500 } },
+                    { x: 630, y: 160, width: 30, height: 30, velX: MONSTER_SPEED * 1.3, direction: 1, platform: { startX: 600, endX: 800 } }
+                ]
+            },
+            // Level 7 - Precise jumps
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 800, height: 50, color: '#4e342e' },
+                    { x: 100, y: 500, width: 30, height: 20, color: '#4e342e' },
+                    { x: 200, y: 450, width: 30, height: 20, color: '#4e342e' },
+                    { x: 300, y: 400, width: 30, height: 20, color: '#4e342e' },
+                    { x: 400, y: 350, width: 30, height: 20, color: '#4e342e' },
+                    { x: 500, y: 300, width: 30, height: 20, color: '#4e342e' },
+                    { x: 600, y: 250, width: 30, height: 20, color: '#4e342e' },
+                    { x: 700, y: 200, width: 30, height: 20, color: '#4e342e' },
+                    { x: 600, y: 150, width: 30, height: 20, color: '#4e342e' },
+                    { x: 500, y: 100, width: 30, height: 20, color: '#4e342e' }
+                ],
+                letters: [
+                    { x: 510, y: 90, char: 'q', collected: false },
+                    { x: 610, y: 140, char: 'w', collected: false },
+                    { x: 710, y: 190, char: 'e', collected: false },
+                    { x: 610, y: 240, char: 'n', collected: false }
+                ],
+                monsters: [
+                    { x: 150, y: 460, width: 30, height: 30, velX: MONSTER_SPEED * 1.5, direction: 1, platform: { startX: 100, endX: 230 } },
+                    { x: 350, y: 360, width: 30, height: 30, velX: MONSTER_SPEED * 1.5, direction: -1, platform: { startX: 300, endX: 430 } },
+                    { x: 550, y: 260, width: 30, height: 30, velX: MONSTER_SPEED * 1.5, direction: 1, platform: { startX: 500, endX: 630 } },
+                    { x: 750, y: 160, width: 30, height: 30, velX: MONSTER_SPEED * 1.5, direction: -1, platform: { startX: 700, endX: 770 } }
+                ]
+            },
+            // Level 8 - Multi-tiered challenge
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 800, height: 50, color: '#4e342e' },
+                    { x: 50, y: 500, width: 80, height: 20, color: '#4e342e' },
+                    { x: 200, y: 450, width: 80, height: 20, color: '#4e342e' },
+                    { x: 350, y: 400, width: 80, height: 20, color: '#4e342e' },
+                    { x: 500, y: 350, width: 80, height: 20, color: '#4e342e' },
+                    { x: 650, y: 300, width: 80, height: 20, color: '#4e342e' },
+                    { x: 550, y: 250, width: 60, height: 20, color: '#4e342e' },
+                    { x: 400, y: 200, width: 60, height: 20, color: '#4e342e' },
+                    { x: 250, y: 150, width: 60, height: 20, color: '#4e342e' },
+                    { x: 100, y: 100, width: 60, height: 20, color: '#4e342e' },
+                    { x: 300, y: 50, width: 60, height: 20, color: '#4e342e' }
+                ],
+                letters: [
+                    { x: 320, y: 40, char: 'q', collected: false },
+                    { x: 120, y: 90, char: 'w', collected: false },
+                    { x: 270, y: 140, char: 'e', collected: false },
+                    { x: 570, y: 240, char: 'n', collected: false }
+                ],
+                monsters: [
+                    { x: 150, y: 460, width: 30, height: 30, velX: MONSTER_SPEED * 1.7, direction: 1, platform: { startX: 50, endX: 280 } },
+                    { x: 450, y: 360, width: 30, height: 30, velX: MONSTER_SPEED * 1.7, direction: -1, platform: { startX: 350, endX: 580 } },
+                    { x: 700, y: 260, width: 30, height: 30, velX: MONSTER_SPEED * 1.7, direction: 1, platform: { startX: 650, endX: 790 } },
+                    { x: 300, y: 110, width: 30, height: 30, velX: MONSTER_SPEED * 1.7, direction: -1, platform: { startX: 100, endX: 360 } }
+                ]
+            },
+            // Level 9 - Gauntlet
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 800, height: 50, color: '#4e342e' },
+                    { x: 50, y: 500, width: 40, height: 20, color: '#4e342e' },
+                    { x: 140, y: 450, width: 40, height: 20, color: '#4e342e' },
+                    { x: 230, y: 400, width: 40, height: 20, color: '#4e342e' },
+                    { x: 320, y: 350, width: 40, height: 20, color: '#4e342e' },
+                    { x: 410, y: 300, width: 40, height: 20, color: '#4e342e' },
+                    { x: 500, y: 250, width: 40, height: 20, color: '#4e342e' },
+                    { x: 590, y: 200, width: 40, height: 20, color: '#4e342e' },
+                    { x: 680, y: 150, width: 40, height: 20, color: '#4e342e' },
+                    { x: 600, y: 100, width: 60, height: 20, color: '#4e342e' },
+                    { x: 450, y: 100, width: 60, height: 20, color: '#4e342e' },
+                    { x: 300, y: 100, width: 60, height: 20, color: '#4e342e' },
+                    { x: 150, y: 100, width: 60, height: 20, color: '#4e342e' }
+                ],
+                letters: [
+                    { x: 620, y: 90, char: 'q', collected: false },
+                    { x: 470, y: 90, char: 'w', collected: false },
+                    { x: 320, y: 90, char: 'e', collected: false },
+                    { x: 170, y: 90, char: 'n', collected: false }
+                ],
+                monsters: [
+                    { x: 100, y: 460, width: 30, height: 30, velX: MONSTER_SPEED * 2, direction: 1, platform: { startX: 50, endX: 180 } },
+                    { x: 190, y: 410, width: 30, height: 30, velX: MONSTER_SPEED * 2, direction: -1, platform: { startX: 140, endX: 270 } },
+                    { x: 280, y: 360, width: 30, height: 30, velX: MONSTER_SPEED * 2, direction: 1, platform: { startX: 230, endX: 360 } },
+                    { x: 370, y: 310, width: 30, height: 30, velX: MONSTER_SPEED * 2, direction: -1, platform: { startX: 320, endX: 450 } },
+                    { x: 460, y: 260, width: 30, height: 30, velX: MONSTER_SPEED * 2, direction: 1, platform: { startX: 410, endX: 540 } },
+                    { x: 550, y: 210, width: 30, height: 30, velX: MONSTER_SPEED * 2, direction: -1, platform: { startX: 500, endX: 630 } }
+                ]
+            },
+            // Level 10 - Final challenge
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 100, height: 50, color: '#4e342e' },
+                    { x: 200, y: 550, width: 100, height: 50, color: '#4e342e' },
+                    { x: 400, y: 550, width: 100, height: 50, color: '#4e342e' },
+                    { x: 600, y: 550, width: 100, height: 50, color: '#4e342e' },
+                    { x: 100, y: 500, width: 30, height: 20, color: '#4e342e' },
+                    { x: 250, y: 450, width: 30, height: 20, color: '#4e342e' },
+                    { x: 400, y: 400, width: 30, height: 20, color: '#4e342e' },
+                    { x: 550, y: 350, width: 30, height: 20, color: '#4e342e' },
+                    { x: 700, y: 300, width: 30, height: 20, color: '#4e342e' },
+                    { x: 600, y: 250, width: 30, height: 20, color: '#4e342e' },
+                    { x: 450, y: 200, width: 30, height: 20, color: '#4e342e' },
+                    { x: 300, y: 150, width: 30, height: 20, color: '#4e342e' },
+                    { x: 150, y: 100, width: 30, height: 20, color: '#4e342e' },
+                    { x: 350, y: 50, width: 100, height: 20, color: '#4e342e' }
+                ],
+                letters: [
+                    { x: 390, y: 40, char: 'q', collected: false },
+                    { x: 170, y: 90, char: 'w', collected: false },
+                    { x: 320, y: 140, char: 'e', collected: false },
+                    { x: 620, y: 240, char: 'n', collected: false }
+                ],
+                monsters: [
+                    { x: 50, y: 510, width: 30, height: 30, velX: MONSTER_SPEED * 2.2, direction: 1, platform: { startX: 0, endX: 200 } },
+                    { x: 250, y: 510, width: 30, height: 30, velX: MONSTER_SPEED * 2.2, direction: -1, platform: { startX: 200, endX: 400 } },
+                    { x: 450, y: 510, width: 30, height: 30, velX: MONSTER_SPEED * 2.2, direction: 1, platform: { startX: 400, endX: 600 } },
+                    { x: 650, y: 510, width: 30, height: 30, velX: MONSTER_SPEED * 2.2, direction: -1, platform: { startX: 600, endX: 800 } },
+                    { x: 200, y: 410, width: 30, height: 30, velX: MONSTER_SPEED * 2.2, direction: 1, platform: { startX: 100, endX: 350 } },
+                    { x: 600, y: 310, width: 30, height: 30, velX: MONSTER_SPEED * 2.2, direction: -1, platform: { startX: 550, endX: 750 } }
+                ]
+            }
+        ];
+
+        // Initialize audio context
+        function initAudio() {
+            try {
+                // Create audio context on user interaction
+                if (!gameAudioContext) {
+                    gameAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                // Always resume audio context (required by modern browsers)
+                if (gameAudioContext.state === 'suspended') {
+                    gameAudioContext.resume();
+                }
+                
+                // Create ambient sound
+                ambientSound = createAmbientSound();
+                if (ambientSound) {
+                    ambientSound.oscillator.start();
+                    ambientSound.oscillator.stop(gameAudioContext.currentTime + 0.1); // Stop immediately, will be controlled by play/stop
+                }
+                
+                // Create other sounds
+                footstepsSound = createFootstepsSound();
+                monsterSound = createMonsterSound();
+                collectSound = createCollectSound();
+                jumpSound = createJumpSound();
+                deathSound = createDeathSound();
+            } catch (e) {
+                console.log("Audio not supported in this browser");
+            }
+        }
+
+        // Create ambient sound
+        function createAmbientSound() {
+            if (!gameAudioContext) return;
+            
+            const oscillator = gameAudioContext.createOscillator();
+            const gainNode = gameAudioContext.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(60, gameAudioContext.currentTime);
+            gainNode.gain.setValueAtTime(0.1, gameAudioContext.currentTime);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(gameAudioContext.destination);
+            
+            // Don't start oscillator here, it will be controlled by play/stop functions
+            return { oscillator, gainNode };
+        }
+
+        // Create footsteps sound
+        function createFootstepsSound() {
+            if (!gameAudioContext) return;
+            
+            const oscillator = gameAudioContext.createOscillator();
+            const gainNode = gameAudioContext.createGain();
+            
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(100, gameAudioContext.currentTime);
+            gainNode.gain.setValueAtTime(0, gameAudioContext.currentTime);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(gameAudioContext.destination);
+            
+            oscillator.start();
+            return { oscillator, gainNode };
+        }
+
+        // Create monster sound
+        function createMonsterSound() {
+            if (!gameAudioContext) return;
+            
+            const oscillator = gameAudioContext.createOscillator();
+            const gainNode = gameAudioContext.createGain();
+            
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(120, gameAudioContext.currentTime);
+            gainNode.gain.setValueAtTime(0, gameAudioContext.currentTime);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(gameAudioContext.destination);
+            
+            oscillator.start();
+            return { oscillator, gainNode };
+        }
+
+        // Create collect sound
+        function createCollectSound() {
+            if (!gameAudioContext) return;
+            
+            const oscillator = gameAudioContext.createOscillator();
+            const gainNode = gameAudioContext.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(800, gameAudioContext.currentTime);
+            gainNode.gain.setValueAtTime(0, gameAudioContext.currentTime);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(gameAudioContext.destination);
+            
+            oscillator.start();
+            return { oscillator, gainNode };
+        }
+
+        // Create jump sound
+        function createJumpSound() {
+            if (!gameAudioContext) return;
+            
+            const oscillator = gameAudioContext.createOscillator();
+            const gainNode = gameAudioContext.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(200, gameAudioContext.currentTime);
+            gainNode.gain.setValueAtTime(0, gameAudioContext.currentTime);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(gameAudioContext.destination);
+            
+            oscillator.start();
+            return { oscillator, gainNode };
+        }
+        
+        // Create death sound
+        function createDeathSound() {
+            if (!gameAudioContext) return;
+            
+            const oscillator = gameAudioContext.createOscillator();
+            const gainNode = gameAudioContext.createGain();
+            
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(100, gameAudioContext.currentTime);
+            gainNode.gain.setValueAtTime(0, gameAudioContext.currentTime);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(gameAudioContext.destination);
+            
+            oscillator.start();
+            return { oscillator, gainNode };
+        }
+        
+        // Create ambient horror sound
+        function createAmbientHorrorSound() {
+            if (!gameAudioContext) return;
+            
+            const oscillator = gameAudioContext.createOscillator();
+            const gainNode = gameAudioContext.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(50 + Math.random() * 30, gameAudioContext.currentTime);
+            gainNode.gain.setValueAtTime(0, gameAudioContext.currentTime);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(gameAudioContext.destination);
+            
+            return { oscillator, gainNode };
+        }
+        
+        // Play ambient horror sound
+        function playAmbientHorrorSound() {
+            if (!gameAudioContext) return;
+            
+            const sound = createAmbientHorrorSound();
+            if (sound) {
+                playSound(sound, 2.0 + Math.random() * 3.0);
+            }
+        }
+
+        // Play sound effect
+        function playSound(sound, duration) {
+            if (!sound || !gameAudioContext) return;
+            
+            // Always resume audio context (required by modern browsers)
+            if (gameAudioContext.state === 'suspended') {
+                gameAudioContext.resume();
+            }
+            
+            // Set volume and play sound
+            sound.gainNode.gain.cancelScheduledValues(gameAudioContext.currentTime);
+            sound.gainNode.gain.setValueAtTime(0.2, gameAudioContext.currentTime);
+            sound.gainNode.gain.exponentialRampToValueAtTime(0.001, gameAudioContext.currentTime + duration);
+        }
+
+        // Stop sound
+        function stopSound(sound) {
+            if (!sound || !gameAudioContext) return;
+            
+            // Always resume audio context (required by modern browsers)
+            if (gameAudioContext.state === 'suspended') {
+                gameAudioContext.resume();
+            }
+            
+            // Stop the sound immediately
+            sound.gainNode.gain.cancelScheduledValues(gameAudioContext.currentTime);
+            sound.gainNode.gain.setValueAtTime(0, gameAudioContext.currentTime);
+        }
+
+        // Load level data
+        function loadLevel(levelIndex) {
+            const levelData = levels[levelIndex - 1];
+            if (!levelData) {
+                // Game completed
+                messageDisplay.textContent = "You Escaped!";
+                messageDisplay.style.opacity = '1';
+                gameRunning = false;
+                stopSound(ambientSound);
+                return;
+            }
+            
+            currentLevelData.platforms = levelData.platforms;
+            currentLevelData.letters = levelData.letters.map(letter => ({ ...letter, collected: false }));
+            currentLevelData.collectedLetters = [];
+            currentLevelData.monsters = levelData.monsters.map(monster => ({ ...monster }));
+            
+            // Reset player position and animation
+            player.x = 50;
+            player.y = 300;
+            player.velX = 0;
+            player.velY = 0;
+            player.jumping = false;
+            player.grounded = false;
+            player.walkCycle = 0;
+            player.lastX = player.x;
+            player.isMoving = false;
+            
+            // No health system needed
+        }
+
+        
+
+        // Draw game elements
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw dark background
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw cave background details (stalactites, stalagmites, rocks)
+            drawCaveDetails();
+
+            // Draw fog particles
+            drawFog();
+
+            // Draw platforms
+            currentLevelData.platforms.forEach(platform => {
+                drawPlatform(platform);
+            });
+
+            // Draw letters
+            currentLevelData.letters.forEach(letter => {
+                if (!letter.collected) {
+                    drawLetter(letter);
+                }
+            });
+
+            // Draw monsters with improved appearance
+            currentLevelData.monsters.forEach(monster => {
+                drawMonster(monster);
+            });
+
+            // Draw player with improved appearance and animation
+            drawPlayer();
+            
+            // Draw collected letters in UI
+            collectedLettersDisplay.textContent = 'Letters: ' + currentLevelData.collectedLetters.join(', ').toUpperCase();
+        }
+
+        // Function to draw cave details
+        function drawCaveDetails() {
+            // Draw some stalactites (hanging from top)
+            ctx.fillStyle = '#3e2723';
+            for (let i = 0; i < 10; i++) {
+                const x = Math.random() * canvas.width;
+                const height = 20 + Math.random() * 30;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x - 5, height);
+                ctx.lineTo(x + 5, height);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Draw some stalagmites (rising from bottom)
+            for (let i = 0; i < 8; i++) {
+                const x = Math.random() * canvas.width;
+                const y = canvas.height - 50;
+                const height = 15 + Math.random() * 25;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x - 4, y - height);
+                ctx.lineTo(x + 4, y - height);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Draw some rocks on the ground
+            ctx.fillStyle = '#2d1b18';
+            for (let i = 0; i < 15; i++) {
+                const x = Math.random() * canvas.width;
+                const y = canvas.height - 45;
+                const size = 3 + Math.random() * 7;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw some bones for horror effect
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 5; i++) {
+                const x = Math.random() * canvas.width;
+                const y = canvas.height - 40;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + 10, y - 10);
+                ctx.moveTo(x + 5, y - 5);
+                ctx.lineTo(x + 15, y - 15);
+                ctx.stroke();
+            }
+        }
+        
+        // Function to draw a platform with texture
+        function drawPlatform(platform) {
+            // Main platform body
+            ctx.fillStyle = platform.color;
+            ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+            
+            // Platform top (dirt/grass)
+            ctx.fillStyle = '#5d4037';
+            ctx.fillRect(platform.x, platform.y, platform.width, 5);
+            
+            // Add some rocky texture details
+            ctx.fillStyle = '#3e2723';
+            for (let i = 0; i < platform.width; i += 30) {
+                const size = 2 + Math.random() * 3;
+                ctx.beginPath();
+                ctx.arc(platform.x + i + Math.random() * 20, platform.y + 10 + Math.random() * (platform.height - 15), size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Add blood stains for horror effect
+            ctx.fillStyle = 'rgba(183, 28, 28, 0.7)';
+            for (let i = 0; i < 3; i++) {
+                if (Math.random() > 0.7) {
+                    const x = platform.x + Math.random() * platform.width;
+                    const y = platform.y + 5 + Math.random() * 10;
+                    const width = 3 + Math.random() * 8;
+                    const height = 2 + Math.random() * 4;
+                    ctx.beginPath();
+                    ctx.ellipse(x, y, width, height, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+        
+        // Function to draw a letter with a glowing effect
+        function drawLetter(letter) {
+            // Glow effect
+            ctx.fillStyle = 'rgba(255, 204, 0, 0.7)';
+            ctx.beginPath();
+            ctx.arc(letter.x, letter.y, 18, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Main letter background
+            ctx.fillStyle = '#ffcc00';
+            ctx.beginPath();
+            ctx.arc(letter.x, letter.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Letter with horror effect
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(letter.char.toUpperCase(), letter.x, letter.y);
+            
+            // Add a creepy eye effect sometimes
+            if (Math.random() > 0.8) {
+                ctx.fillStyle = '#ff0000';
+                ctx.beginPath();
+                ctx.arc(letter.x + 8, letter.y - 8, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Function to draw a monster with a more detailed appearance
+        function drawMonster(monster) {
+            // Monster body
+            ctx.fillStyle = '#7b1fa2';
+            ctx.fillRect(monster.x, monster.y, monster.width, monster.height);
+            
+            // Monster body highlight
+            ctx.fillStyle = '#9c27b0';
+            ctx.fillRect(monster.x + 2, monster.y + 2, monster.width - 4, monster.height - 4);
+            
+            // Monster eyes
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(monster.x + 10, monster.y + 12, 4, 0, Math.PI * 2);
+            ctx.arc(monster.x + monster.width - 10, monster.y + 12, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(monster.x + 10, monster.y + 12, 2, 0, Math.PI * 2);
+            ctx.arc(monster.x + monster.width - 10, monster.y + 12, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Monster mouth with teeth
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(monster.x + 8, monster.y + 22, monster.width - 16, 8);
+            
+            // Teeth
+            ctx.fillStyle = '#ffffff';
+            for (let i = 0; i < 3; i++) {
+                ctx.fillRect(monster.x + 10 + i * 6, monster.y + 22, 3, 5);
+            }
+            
+            // Monster spikes
+            ctx.fillStyle = '#4a148c';
+            for (let i = 0; i < 3; i++) {
+                ctx.fillRect(monster.x + 5 + i * 10, monster.y - 5, 5, 5);
+            }
+            
+            // Add some creepy effect
+            if (Math.random() > 0.95) {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.arc(monster.x + monster.width/2, monster.y + monster.height/2, monster.width, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Function to draw the player with animation
+        function drawPlayer() {
+            const legOffset = Math.sin(player.walkCycle) * 3; // Leg movement amplitude
+            
+            // Player shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(player.x + player.width/2 + 2, player.y + player.height + 12, player.width/2, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Backpack
+            ctx.fillStyle = '#5d4037';
+            ctx.fillRect(player.x - 5, player.y + 5, 5, 20);
+            // Backpack strap
+            ctx.fillStyle = '#8d6e63';
+            ctx.fillRect(player.x - 6, player.y + 5, 1, 20);
+            
+            // Body with slight movement animation
+            const bodyOffset = Math.sin(player.walkCycle * 2) * 0.5;
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(player.x + bodyOffset, player.y, player.width, player.height);
+            
+            // Body detail (shirt) with movement
+            ctx.fillStyle = '#34495e';
+            ctx.fillRect(player.x + 3 + bodyOffset, player.y + 3, player.width - 6, player.height - 6);
+            
+            // Head
+            ctx.fillStyle = '#8d6e63';
+            ctx.beginPath();
+            ctx.arc(player.x + player.width/2, player.y - 5, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Hat
+            ctx.fillStyle = '#5d4037';
+            ctx.fillRect(player.x + 2, player.y - 12, player.width - 4, 5);
+            // Hat brim
+            ctx.fillRect(player.x, player.y - 10, player.width, 2);
+            
+            // Face details
+            ctx.fillStyle = '#2c3e50';
+            if (player.facingRight) {
+                // Right eye
+                ctx.fillRect(player.x + player.width/2 + 2, player.y - 7, 3, 3);
+                // Mouth
+                ctx.fillRect(player.x + player.width/2, player.y - 6, 4, 1);
+            } else {
+                // Left eye
+                ctx.fillRect(player.x + player.width/2 - 5, player.y - 7, 3, 3);
+                // Mouth
+                ctx.fillRect(player.x + player.width/2 - 4, player.y - 6, 4, 1);
+            }
+            
+            // Legs (with animation)
+            ctx.fillStyle = '#2c3e50'; // Dark pants
+            if (player.grounded) {
+                // Draw walking legs with more natural movement
+                const leftLegOffset = Math.sin(player.walkCycle) * 4;
+                const rightLegOffset = Math.sin(player.walkCycle + Math.PI) * 4;
+                ctx.fillRect(player.x + 8, player.y + player.height, 5, 10 + leftLegOffset * player.walkDirection);
+                ctx.fillRect(player.x + player.width - 13, player.y + player.height, 5, 10 + rightLegOffset * player.walkDirection);
+            } else {
+                // Draw jumping legs (straight down)
+                ctx.fillRect(player.x + 8, player.y + player.height, 5, 10);
+                ctx.fillRect(player.x + player.width - 13, player.y + player.height, 5, 10);
+            }
+            
+            // Arms
+            ctx.fillStyle = '#8d6e63';
+            ctx.fillRect(player.x - 3, player.y + 10, 5, 15);
+            ctx.fillRect(player.x + player.width - 2, player.y + 10, 5, 15);
+            
+            // Draw lantern in player's hand
+            const lanternX = player.facingRight ? player.x + player.width + 2 : player.x - 12;
+            const lanternY = player.y + 15;
+            
+            // Lantern handle
+            ctx.fillStyle = '#7f8c8d';
+            ctx.fillRect(lanternX + 3, lanternY - 5, 2, 5);
+            
+            // Lantern body
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillRect(lanternX, lanternY, 8, 10);
+            
+            // Lantern top
+            ctx.fillStyle = '#7f8c8d';
+            ctx.fillRect(lanternX - 1, lanternY - 2, 10, 2);
+            
+            // Lantern shine
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(lanternX + 6, lanternY + 2, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Lantern glow
+            const lanternGlow = ctx.createRadialGradient(
+                lanternX + 4, lanternY + 5, 0,
+                lanternX + 4, lanternY + 5, 15
+            );
+            lanternGlow.addColorStop(0, 'rgba(255, 165, 0, 0.8)');
+            lanternGlow.addColorStop(1, 'rgba(255, 165, 0, 0)');
+            ctx.fillStyle = lanternGlow;
+            ctx.beginPath();
+            ctx.arc(lanternX + 4, lanternY + 5, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw light beam from lantern with flicker effect
+            const flicker = Math.sin(Date.now() / 100) * 0.1;
+            const beamGradient = ctx.createRadialGradient(
+                lanternX + 4, lanternY + 5, 5,
+                lanternX + 4, lanternY + 5, 50
+            );
+            beamGradient.addColorStop(0, `rgba(255, 165, 0, ${0.5 + flicker})`);
+            beamGradient.addColorStop(1, 'rgba(255, 165, 0, 0)');
+            ctx.fillStyle = beamGradient;
+            ctx.beginPath();
+            if (player.facingRight) {
+                ctx.moveTo(lanternX + 8, lanternY + 2);
+                ctx.lineTo(lanternX + 45, lanternY - 20);
+                ctx.lineTo(lanternX + 45, lanternY + 30);
+                ctx.lineTo(lanternX + 8, lanternY + 8);
+            } else {
+                ctx.moveTo(lanternX, lanternY + 2);
+                ctx.lineTo(lanternX - 35, lanternY - 20);
+                ctx.lineTo(lanternX - 35, lanternY + 30);
+                ctx.lineTo(lanternX, lanternY + 8);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Draw fog effect
+        function drawFog() {
+            // Clear fog canvas
+            fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
+            
+            // Create fog gradient
+            const fogGradient = fogCtx.createRadialGradient(
+                player.x + player.width/2,
+                player.y + player.height/2,
+                30,
+                player.x + player.width/2,
+                player.y + player.height/2,
+                200
+            );
+            fogGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            fogGradient.addColorStop(1, 'rgba(20, 10, 10, 0.8)');
+            
+            fogCtx.fillStyle = fogGradient;
+            fogCtx.fillRect(0, 0, fogCanvas.width, fogCanvas.height);
+            
+            // Draw fog particles
+            fogCtx.fillStyle = 'rgba(200, 200, 200, 0.1)';
+            for (let i = 0; i < fogParticles.length; i++) {
+                const p = fogParticles[i];
+                fogCtx.beginPath();
+                fogCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                fogCtx.fill();
+            }
+        }
+
+        // Initialize fog particles
+        function initFogParticles() {
+            for (let i = 0; i < 50; i++) {
+                fogParticles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 3 + 1,
+                    speed: Math.random() * 0.5 + 0.1
+                });
+            }
+        }
+
+        // Update fog particles
+        function updateFogParticles() {
+            for (let i = 0; i < fogParticles.length; i++) {
+                const p = fogParticles[i];
+                p.y += p.speed;
+                if (p.y > canvas.height) {
+                    p.y = 0;
+                    p.x = Math.random() * canvas.width;
+                }
+            }
+        }
+
+        // Separated Axis Theorem (SAT) based collision detection and response
+        function satCollisionAndResponse(obj1, obj2) {
+            // Vector from obj1 to obj2
+            const vX = (obj1.x + obj1.width / 2) - (obj2.x + obj2.width / 2);
+            const vY = (obj1.y + obj1.height / 2) - (obj2.y + obj2.height / 2);
+            
+            // Combine half widths and half heights
+            const hWidths = (obj1.width / 2) + (obj2.width / 2);
+            const hHeights = (obj1.height / 2) + (obj2.height / 2);
+            
+            // Check for overlap on each axis
+            if (Math.abs(vX) < hWidths && Math.abs(vY) < hHeights) {
+                // Calculate overlap on each axis
+                const oX = hWidths - Math.abs(vX);
+                const oY = hHeights - Math.abs(vY);
+                
+                // Resolve collision along the axis with the smallest overlap
+                if (oX < oY) {
+                    if (vX > 0) {
+                        // Collision on the right side of obj2
+                        obj1.x = obj2.x + obj2.width;
+                    } else {
+                        // Collision on the left side of obj2
+                        obj1.x = obj2.x - obj1.width;
+                    }
+                    // Stop horizontal movement
+                    obj1.velX = 0;
+                } else {
+                    if (vY > 0) {
+                        // Collision on the bottom side of obj2
+                        obj1.y = obj2.y + obj2.height;
+                        // Stop vertical movement
+                        obj1.velY = 0;
+                    } else {
+                        // Collision on the top side of obj2
+                        obj1.y = obj2.y - obj1.height;
+                        // Stop vertical movement and allow jumping
+                        obj1.velY = 0;
+                        obj1.jumping = false;
+                        obj1.grounded = true;
+                    }
+                }
+                return true; // Collision occurred
+            }
+            return false; // No collision
+        }
+
+        // Check collision between two rectangles
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+
+        // Update game state
+        function update() {
+            if (!gameRunning) return;
+            
+            // Apply gravity
+            player.velY += GRAVITY;
+
+            // Apply friction to horizontal movement
+            player.velX *= FRICTION;
+
+            // Update player position
+            player.x += player.velX;
+            player.y += player.velY;
+
+            // Check if player is moving
+            player.isMoving = Math.abs(player.x - player.lastX) > 0.1;
+            player.lastX = player.x;
+
+            // Update walk animation cycle
+            if (player.grounded && player.isMoving) {
+                player.walkCycle += 0.2;
+                // Set walk direction based on velocity
+                player.walkDirection = player.velX > 0 ? 1 : -1;
+            } else {
+                // Reset walk cycle when not moving or in air
+                player.walkCycle = 0;
+            }
+
+            // Play footstep sound when moving
+            if (player.isMoving && player.grounded) {
+                if (Math.random() > 0.95) {
+                    // Play footstep sound with explicit audio context resume
+                    if (gameAudioContext && gameAudioContext.state === 'suspended') {
+                        gameAudioContext.resume().then(() => {
+                            playSound(footstepsSound, 0.1);
+                        });
+                    } else {
+                        playSound(footstepsSound, 0.1);
+                    }
+                }
+            } else {
+                stopSound(footstepsSound);
+            }
+
+            // Check for collisions with platforms
+            player.grounded = false;
+            
+            for (let i = 0; i < currentLevelData.platforms.length; i++) {
+                const platform = currentLevelData.platforms[i];
+                
+                // Create a temporary object for player's new position
+                const playerTemp = {
+                    x: player.x,
+                    y: player.y,
+                    width: player.width,
+                    height: player.height,
+                    velX: player.velX,
+                    velY: player.velY
+                };
+                
+                // Check and respond to collision
+                if (satCollisionAndResponse(playerTemp, platform)) {
+                    // Update player's actual position and velocity based on collision response
+                    player.x = playerTemp.x;
+                    player.y = playerTemp.y;
+                    player.velX = playerTemp.velX;
+                    player.velY = playerTemp.velY;
+                    player.jumping = playerTemp.jumping;
+                    player.grounded = playerTemp.grounded;
+                }
+            }
+
+            // Update monsters
+            for (let i = 0; i < currentLevelData.monsters.length; i++) {
+                const monster = currentLevelData.monsters[i];
+                
+                // Move monster
+                monster.x += monster.velX * monster.direction;
+                
+                // Reverse direction if monster reaches end of platform
+                if (monster.x < monster.platform.startX || monster.x + monster.width > monster.platform.endX) {
+                    monster.direction *= -1;
+                }
+                
+                // Play monster sound occasionally
+                if (Math.random() > 0.995) {
+                    // Play monster sound with explicit audio context resume
+                    if (gameAudioContext && gameAudioContext.state === 'suspended') {
+                        gameAudioContext.resume().then(() => {
+                            playSound(monsterSound, 0.5);
+                        });
+                    } else {
+                        playSound(monsterSound, 0.5);
+                    }
+                }
+                
+                // Play ambient horror sounds occasionally
+                if (Math.random() > 0.998) {
+                    // Play ambient horror sound with explicit audio context resume
+                    if (gameAudioContext && gameAudioContext.state === 'suspended') {
+                        gameAudioContext.resume().then(() => {
+                            playAmbientHorrorSound();
+                        });
+                    } else {
+                        playAmbientHorrorSound();
+                    }
+                }
+            }
+
+            // Check if player fell off the screen
+            if (player.y > canvas.height) {
+                gameOver();
+                return;
+            }
+
+            // Check if player collides with a monster
+            for (let i = 0; i < currentLevelData.monsters.length; i++) {
+                const monster = currentLevelData.monsters[i];
+                if (checkCollision(player, monster)) {
+                    // Instant death on monster collision
+                    gameOver();
+                    return;
+                }
+            }
+
+            // Check if player collected a letter
+            for (let i = 0; i < currentLevelData.letters.length; i++) {
+                const letter = currentLevelData.letters[i];
+                if (!letter.collected) {
+                    const letterObj = {
+                        x: letter.x - 15,
+                        y: letter.y - 15,
+                        width: 30,
+                        height: 30
+                    };
+                    
+                    // Simple AABB check for letter collection
+                    if (checkCollision(player, letterObj)) {
+                        letter.collected = true;
+                        currentLevelData.collectedLetters.push(letter.char);
+                        // Play collect sound with explicit audio context resume
+                        if (gameAudioContext && gameAudioContext.state === 'suspended') {
+                            gameAudioContext.resume().then(() => {
+                                playSound(collectSound, 0.3);
+                            });
+                        } else {
+                            playSound(collectSound, 0.3);
+                        }
+                    }
+                }
+            }
+
+            // Check if all letters are collected
+            if (currentLevelData.collectedLetters.length === 4) {
+                messageDisplay.style.opacity = '1';
+                // Use a flag to prevent multiple level loads
+                if (!levelCompletedFlag) {
+                    levelCompletedFlag = true;
+                    setTimeout(() => {
+                        level++;
+                        levelDisplay.textContent = `Level: ${level}`;
+                        loadLevel(level);
+                        messageDisplay.style.opacity = '0';
+                        // Reset flag after loading new level
+                        levelCompletedFlag = false;
+                    }, 1500);
+                }
+            }
+            
+            // Update fog particles
+            updateFogParticles();
+        }
+
+        // Game over function
+        function gameOver() {
+            messageDisplay.textContent = "You Died!";
+            messageDisplay.style.opacity = '1';
+            gameRunning = false;
+            stopSound(ambientSound);
+            // Play death sound with explicit audio context resume
+            if (gameAudioContext) {
+                if (gameAudioContext.state === 'suspended') {
+                    gameAudioContext.resume().then(() => {
+                        playSound(deathSound, 1.0);
+                    });
+                } else {
+                    playSound(deathSound, 1.0);
+                }
+            }
+            
+            // Optionally, restart the game after a delay
+            // setTimeout(() => {
+            //     level = 1;
+            //     gameRunning = true;
+            //     loadLevel(level);
+            //     messageDisplay.style.opacity = '0';
+            // }, 3000);
+        }
+
+        // Handle keyboard input
+        const keys = {};
+        
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Game loop
+        let lastTime = 0;
+        let levelCompletedFlag = false;
+        
+        function gameLoop(timestamp) {
+            // Handle input
+            if (keys['a'] || keys['ArrowLeft']) {
+                player.velX = -PLAYER_SPEED;
+                player.facingRight = false;
+            } else if (keys['d'] || keys['ArrowRight']) {
+                player.velX = PLAYER_SPEED;
+                player.facingRight = true;
+            } else {
+                // Apply friction when no key is pressed
+                player.velX *= FRICTION;
+            }
+            
+            if ((keys[' '] || keys['w'] || keys['ArrowUp']) && player.grounded && !player.jumping) {
+                player.velY = JUMP_FORCE;
+                player.grounded = false;
+                player.jumping = true;
+                // Play jump sound with explicit audio context resume
+                if (gameAudioContext && gameAudioContext.state === 'suspended') {
+                    gameAudioContext.resume().then(() => {
+                        playSound(jumpSound, 0.3);
+                    });
+                } else {
+                    playSound(jumpSound, 0.3);
+                }
+            }
+            
+            update();
+            draw();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start game function
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameRunning = true;
+            loadLevel(level);
+            initAudio();
+            // Play ambient sound with explicit audio context resume
+            if (ambientSound) {
+                if (gameAudioContext && gameAudioContext.state === 'suspended') {
+                    gameAudioContext.resume().then(() => {
+                        playSound(ambientSound, 10);
+                    });
+                } else {
+                    playSound(ambientSound, 10);
+                }
+            }
+            // Play start sound
+            if (gameAudioContext) {
+                const startSound = createStartSound();
+                if (startSound) {
+                    if (gameAudioContext.state === 'suspended') {
+                        gameAudioContext.resume().then(() => {
+                            playSound(startSound, 0.5);
+                        });
+                    } else {
+                        playSound(startSound, 0.5);
+                    }
+                }
+            }
+            initFogParticles();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Create start sound
+        function createStartSound() {
+            if (!gameAudioContext) return;
+            
+            const oscillator = gameAudioContext.createOscillator();
+            const gainNode = gameAudioContext.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(300, gameAudioContext.currentTime);
+            gainNode.gain.setValueAtTime(0, gameAudioContext.currentTime);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(gameAudioContext.destination);
+            
+            return { oscillator, gainNode };
+        }
+
+        // Event listener for start button
+        startButton.addEventListener('click', startGame);
+        
+        // Add hover sound effect to start button
+        startButton.addEventListener('mouseenter', function() {
+            if (gameAudioContext) {
+                const hoverSound = createHoverSound();
+                if (hoverSound) {
+                    playSound(hoverSound, 0.2);
+                }
+            }
+        });
+        
+        // Create hover sound
+        function createHoverSound() {
+            if (!gameAudioContext) return;
+            
+            const oscillator = gameAudioContext.createOscillator();
+            const gainNode = gameAudioContext.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(400, gameAudioContext.currentTime);
+            gainNode.gain.setValueAtTime(0, gameAudioContext.currentTime);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(gameAudioContext.destination);
+            
+            return { oscillator, gainNode };
+        }
+
+        // Initialize game (but don't start yet)
+        // loadLevel(level);
+        // requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
